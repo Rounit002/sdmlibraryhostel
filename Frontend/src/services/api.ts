@@ -101,9 +101,9 @@ interface DashboardStats {
 }
 
 const API_URL = window.cordova
-  ? 'https://mansalibrary.onrender.com/api'
+  ? 'https://sdmlibraries.onrender.com/api'
   : process.env.NODE_ENV === 'production'
-    ? 'https://mansalibrary.onrender.com/api'
+    ? 'https://sdmlibraries.onrender.com/api'
     : 'http://localhost:3000/api';
 
 const apiClient = axios.create({
