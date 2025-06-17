@@ -213,7 +213,7 @@ const ExpiredMemberships = () => {
         aadharNumber: aadharNumberInput,
         address: addressInput,
         membershipStart: format(startDate, 'yyyy-MM-dd'),
-        membershipEnd: format(endDate, 'yyyy-MM-dd'),
+        membershipEnd: format(endDate, 'yyyy-M-dd'),
         email: emailInput,
         phone: phoneInput,
         branchId: selectedBranch.value,
@@ -251,9 +251,11 @@ const ExpiredMemberships = () => {
   return (
     <div className="flex h-screen bg-gray-50">
       <Sidebar />
-      <div className="flex-1 flex flex-col overflow-hidden">
+      {/* CHANGE 1: The 'overflow-hidden' class was removed from here */}
+      <div className="flex-1 flex flex-col overflow-y-auto">
         <Navbar />
-        <div className="p-4">
+        {/* CHANGE 2: 'flex-1' and 'overflow-y-auto' were added here to make this specific area scrollable */}
+        <div className="flex-1 p-4">
           <h2 className="text-xl font-semibold mb-4">Expired Memberships</h2>
           <div className="relative mb-4">
             <Search className="absolute left-3 top-3 text-gray-400" />
