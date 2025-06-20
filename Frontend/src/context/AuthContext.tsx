@@ -1,10 +1,12 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import api from '../services/api';
+import axios from 'axios';
 
 interface User {
   id: string;
   username: string;
   role: string;
+  permissions: string[];
 }
 
 interface AuthContextType {
@@ -12,6 +14,7 @@ interface AuthContextType {
   user: User | null;
   login: (user: User) => void;
   logout: () => Promise<void>;
+  refreshUser: () => Promise<void>; // ✅ NEW
   isLoading: boolean;
 }
 
@@ -20,6 +23,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   login: () => {},
   logout: async () => {},
+  refreshUser: async () => {},
   isLoading: false,
 });
 
@@ -27,12 +31,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // ✅ NEW FUNCTION: Refresh user session via /auth/refresh
+  const refreshUser = async () => {
+    try {
+      const response = await axios.get('/api/auth/refresh', { withCredentials: true });
+      const refreshedUser = response.data.user;
+      refreshedUser.permissions = refreshedUser.permissions || [];
+      setUser(refreshedUser);
+      console.log('[AuthContext] Session refreshed:', refreshedUser);
+    } catch (err) {
+      console.error('[AuthContext] Failed to refresh session:', err);
+    }
+  };
+
   useEffect(() => {
     let intervalId: NodeJS.Timeout;
+
     const checkAuth = async () => {
       try {
         const data = await api.checkAuthStatus();
-        setUser(data.isAuthenticated ? data.user : null);
+        if (data.isAuthenticated) {
+          data.user.permissions = data.user.permissions || [];
+          setUser(data.user);
+        } else {
+          setUser(null);
+        }
       } catch (error) {
         console.error('Auth check failed:', error);
         setUser(null);
@@ -42,11 +65,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
 
     checkAuth();
-    intervalId = setInterval(checkAuth, 30000); // Recheck every 30 seconds
+    intervalId = setInterval(checkAuth, 30000); // Recheck every 30s
     return () => clearInterval(intervalId);
   }, []);
 
   const login = (user: User) => {
+    user.permissions = user.permissions || [];
     setUser(user);
     setIsLoading(false);
   };
@@ -70,6 +94,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         user,
         login,
         logout,
+        refreshUser, // ✅ Provide function to components
         isLoading,
       }}
     >

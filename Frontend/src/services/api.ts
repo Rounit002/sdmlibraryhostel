@@ -223,9 +223,15 @@ const api = {
   },
 
   getBranches: async (): Promise<Branch[]> => {
+  try {
     const response = await apiClient.get('/branches');
     return response.data.branches;
-  },
+  } catch (error: any) {
+    console.error('[api.ts getBranches] Error:', error.message, JSON.stringify(error.response?.data, null, 2));
+    throw new Error(error.response?.data?.message || 'Failed to fetch branches');
+  }
+},
+
 
   addBranch: async (branchData: { name: string; code?: string }): Promise<Branch> => {
     const response = await apiClient.post('/branches', branchData);

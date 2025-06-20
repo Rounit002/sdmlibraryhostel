@@ -1,10 +1,9 @@
-// File: ExpiredMemberships.tsx
 import React, { useEffect, useState } from 'react';
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import api from '../services/api';
-import { Search, ChevronLeft, ChevronRight, Trash2, Eye } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, Trash2, Eye, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -56,7 +55,6 @@ interface Student {
   seatId?: number;
   seatNumber?: string;
 }
-
 
 interface Seat {
   id: number;
@@ -193,6 +191,15 @@ const ExpiredMemberships = () => {
     }
   };
 
+  const handleWhatsAppClick = (phone: string) => {
+    // Format phone number to remove any non-digit characters
+    const formattedPhone = phone.replace(/\D/g, '');
+    // Construct WhatsApp URL (using international format, assuming phone number is valid)
+    const whatsappUrl = `https://wa.me/${formattedPhone}`;
+    // Open WhatsApp chat in a new tab
+    window.open(whatsappUrl, '_blank');
+  };
+
   const handleRenewSubmit = async () => {
     // **FIX START**: Added stricter validation to match backend requirements
     if (
@@ -213,7 +220,7 @@ const ExpiredMemberships = () => {
         aadharNumber: aadharNumberInput,
         address: addressInput,
         membershipStart: format(startDate, 'yyyy-MM-dd'),
-        membershipEnd: format(endDate, 'yyyy-M-dd'),
+        membershipEnd: format(endDate, 'yyyy-MM-dd'),
         email: emailInput,
         phone: phoneInput,
         branchId: selectedBranch.value,
@@ -251,10 +258,8 @@ const ExpiredMemberships = () => {
   return (
     <div className="flex h-screen bg-gray-50">
       <Sidebar />
-      {/* CHANGE 1: The 'overflow-hidden' class was removed from here */}
       <div className="flex-1 flex flex-col overflow-y-auto">
         <Navbar />
-        {/* CHANGE 2: 'flex-1' and 'overflow-y-auto' were added here to make this specific area scrollable */}
         <div className="flex-1 p-4">
           <h2 className="text-xl font-semibold mb-4">Expired Memberships</h2>
           <div className="relative mb-4">
@@ -323,6 +328,13 @@ const ExpiredMemberships = () => {
                             <Trash2 size={16} />
                           </Button>
                         )}
+                        <Button 
+                          variant="outline" 
+                          onClick={() => handleWhatsAppClick(student.phone)}
+                          title="Send WhatsApp Message"
+                        >
+                          <MessageCircle size={16} />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}

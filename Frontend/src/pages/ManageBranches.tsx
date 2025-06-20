@@ -1,7 +1,9 @@
+// src/pages/ManageBranches.tsx
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 import { toast } from 'sonner';
 import Sidebar from '../components/Sidebar';
+import { useAuth } from '../context/AuthContext';
 
 const ManageBranches: React.FC = () => {
   const [branches, setBranches] = useState<{ id: number; name: string; code?: string | null }[]>([]);
@@ -9,13 +11,21 @@ const ManageBranches: React.FC = () => {
   const [editingBranch, setEditingBranch] = useState<{ id: number; name: string; code?: string | null } | null>(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
+  const { refreshUser } = useAuth();
+
   useEffect(() => {
     const fetchBranches = async () => {
-      const data = await api.getBranches();
-      setBranches(data);
+      try {
+        await refreshUser();
+        const data = await api.getBranches();
+        setBranches(data);
+      } catch (error: any) {
+        console.error('Failed to load branches:', error);
+        toast.error(error.message || 'Could not fetch branches');
+      }
     };
     fetchBranches();
-  }, []);
+  }, [refreshUser]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -24,31 +34,33 @@ const ManageBranches: React.FC = () => {
 
   const handleSubmit = async () => {
     try {
+      await refreshUser();
       if (editingBranch) {
-        const updatedBranch = await api.updateBranch(editingBranch.id, formData);
-        setBranches(prev => prev.map(b => b.id === updatedBranch.id ? updatedBranch : b));
+        const updated = await api.updateBranch(editingBranch.id, formData);
+        setBranches(prev => prev.map(b => b.id === updated.id ? updated : b));
         setEditingBranch(null);
       } else {
-        const newBranch = await api.addBranch(formData);
-        setBranches(prev => [...prev, newBranch]);
+        const created = await api.addBranch(formData);
+        setBranches(prev => [...prev, created]);
         setFormData({ name: '', code: '' });
       }
       toast.success('Branch saved successfully');
-    } catch (error) {
-      toast.error('Failed to save branch');
+    } catch (error: any) {
+      console.error('Save error:', error);
+      toast.error(error.message || 'Failed to save branch');
     }
   };
 
-  const handleEdit = (branch: { id: number; name: string; code?: string | null }) => {
-    setEditingBranch(branch);
-    setFormData({ name: branch.name, code: branch.code || '' });
-  };
-
   const handleDelete = async (id: number) => {
-    if (window.confirm('Are you sure?')) {
+    if (!window.confirm('Are you sure?')) return;
+    try {
+      await refreshUser();
       await api.deleteBranch(id);
       setBranches(prev => prev.filter(b => b.id !== id));
       toast.success('Branch deleted');
+    } catch (error: any) {
+      console.error('Delete error:', error);
+      toast.error(error.message || 'Failed to delete branch');
     }
   };
 
@@ -90,7 +102,7 @@ const ManageBranches: React.FC = () => {
                 <td className="p-2">{branch.name}</td>
                 <td className="p-2">{branch.code || '-'}</td>
                 <td className="p-2">
-                  <button onClick={() => handleEdit(branch)} className="text-blue-600 mr-2">Edit</button>
+                  <button onClick={() => setEditingBranch(branch)} className="text-blue-600 mr-2">Edit</button>
                   <button onClick={() => handleDelete(branch.id)} className="text-red-600">Delete</button>
                 </td>
               </tr>

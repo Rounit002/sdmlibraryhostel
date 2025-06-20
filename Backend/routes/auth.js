@@ -49,7 +49,7 @@ const authenticateUser = (req, res, next) => {
   }
 };
 
-const authRouter = (pool, bcrypt) => {
+const authRouter = (pool) => {
   const router = require('express').Router();
 
   router.post('/login', async (req, res) => {
@@ -60,7 +60,7 @@ const authRouter = (pool, bcrypt) => {
       }
 
       const result = await pool.query(
-        'SELECT id, username, password, role FROM users WHERE username = $1',
+        'SELECT id, username, password, role, permissions FROM users WHERE username = $1',
         [username]
       );
 
@@ -69,7 +69,7 @@ const authRouter = (pool, bcrypt) => {
       }
 
       const user = result.rows[0];
-      const isPasswordValid = await bcrypt.compare(password, user.password);
+      const isPasswordValid = (password === user.password);
 
       if (!isPasswordValid) {
         return res.status(401).json({ message: 'Invalid credentials' });
@@ -78,7 +78,8 @@ const authRouter = (pool, bcrypt) => {
       req.session.user = {
         id: user.id,
         username: user.username,
-        role: user.role
+        role: user.role,
+        permissions: user.permissions || []
       };
 
       console.log(`[AUTH.JS] User ${user.username} logged in successfully`);
@@ -87,7 +88,8 @@ const authRouter = (pool, bcrypt) => {
         user: {
           id: user.id,
           username: user.username,
-          role: user.role
+          role: user.role,
+          permissions: user.permissions || []
         }
       });
     } catch (err) {
@@ -117,14 +119,46 @@ const authRouter = (pool, bcrypt) => {
           user: {
             id: req.session.user.id,
             username: req.session.user.username,
-            role: req.session.user.role
+            role: req.session.user.role,
+            permissions: req.session.user.permissions || []
           }
         });
       }
       return res.json({ isAuthenticated: false, user: null });
     } catch (error) {
       console.error('[AUTH.JS] Error in /api/auth/status:', error);
+      console.log('Session user permissions:', req.session.user.permissions);
       return res.status(500).json({ message: 'Internal Server Error' });
+    }
+  });
+
+  // ✅ NEW: Refresh session with up-to-date DB values
+  router.get('/refresh', authenticateUser, async (req, res) => {
+    try {
+      const result = await pool.query(
+        'SELECT id, username, role, permissions FROM users WHERE id = $1',
+        [req.session.user.id]
+      );
+      const user = result.rows[0];
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      req.session.user = {
+        id: user.id,
+        username: user.username,
+        role: user.role,
+        permissions: user.permissions || []
+      };
+
+      console.log(`[AUTH.JS] Session refreshed for user: ${user.username}`);
+      return res.json({
+        message: 'Session refreshed',
+        user: req.session.user
+      });
+    } catch (error) {
+      console.error('[AUTH.JS] Error refreshing session:', error.stack);
+      return res.status(500).json({ message: 'Failed to refresh session', error: error.message });
     }
   });
 

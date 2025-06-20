@@ -1,9 +1,12 @@
+// routes/branches.js
 module.exports = (pool) => {
   const express = require('express');
   const router = express.Router();
-  const { checkAdmin } = require('./auth');
+  // No longer need checkAdmin, as permission is checked in server.js
+  // const { checkAdmin } = require('./auth'); 
 
-  router.get('/', checkAdmin, async (req, res) => {
+  // The checkAdmin middleware has been removed from this route.
+  router.get('/', async (req, res) => {
     try {
       const result = await pool.query('SELECT * FROM branches ORDER BY name');
       res.json({ branches: result.rows });
@@ -12,7 +15,8 @@ module.exports = (pool) => {
     }
   });
 
-  router.post('/', checkAdmin, async (req, res) => {
+  // The checkAdmin middleware has been removed from this route.
+  router.post('/', async (req, res) => {
     try {
       const { name, code } = req.body;
       if (!name) return res.status(400).json({ message: 'Branch name is required' });
@@ -26,7 +30,8 @@ module.exports = (pool) => {
     }
   });
 
-  router.put('/:id', checkAdmin, async (req, res) => {
+  // The checkAdmin middleware has been removed from this route.
+  router.put('/:id', async (req, res) => {
     try {
       const { id } = req.params;
       const { name, code } = req.body;
@@ -41,7 +46,8 @@ module.exports = (pool) => {
     }
   });
 
-  router.delete('/:id', checkAdmin, async (req, res) => {
+  // The checkAdmin middleware has been removed from this route.
+  router.delete('/:id', async (req, res) => {
     try {
       const { id } = req.params;
       const result = await pool.query('DELETE FROM branches WHERE id = $1 RETURNING *', [id]);
