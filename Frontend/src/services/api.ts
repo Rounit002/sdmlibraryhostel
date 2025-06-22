@@ -232,7 +232,6 @@ const api = {
   }
 },
 
-
   addBranch: async (branchData: { name: string; code?: string }): Promise<Branch> => {
     const response = await apiClient.post('/branches', branchData);
     return response.data;

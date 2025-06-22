@@ -694,7 +694,7 @@ if (shiftIdsNum.length > 0) {
   //================================================================//
   //==               FIXED RENEW MEMBERSHIP ROUTE                 ==//
   //================================================================//
-  router.post('/:id/renew', checkAdmin, async (req, res) => {
+  router.post('/:id/renew', checkAdminOrStaff, async (req, res) => {
     const client = await pool.connect(); // Use transaction for multi-step operation
     try {
       await client.query('BEGIN');

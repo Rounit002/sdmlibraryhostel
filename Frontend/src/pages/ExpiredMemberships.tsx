@@ -304,7 +304,7 @@ const ExpiredMemberships = () => {
                         <Button onClick={() => navigate(`/students/${student.id}`)} variant="outline">
                           <Eye size={16} />
                         </Button>
-                        {user?.role === 'admin' && (
+                        {(user?.role === 'admin' || user?.role === 'staff') && (
                           <Button onClick={() => handleRenewClick(student)}>
                             <ChevronRight size={16} /> Renew
                           </Button>
