@@ -157,52 +157,60 @@ module.exports = (pool) => {
 
   // GET expired students (dynamically) - UPDATED to include shift and seat
   router.get('/expired', checkAdminOrStaff, async (req, res) => {
-    try {
-      const { branchId } = req.query;
-      const branchIdNum = branchId ? parseInt(branchId, 10) : null;
-      let query = `
-        SELECT
-            s.*,
-            b.name as branch_name,
-            (SELECT sa_latest.shift_id FROM seat_assignments sa_latest WHERE sa_latest.student_id = s.id ORDER BY sa_latest.id DESC LIMIT 1) as shift_id,
-            (SELECT sch.title FROM seat_assignments sa_latest JOIN schedules sch ON sa_latest.shift_id = sch.id WHERE sa_latest.student_id = s.id ORDER BY sa_latest.id DESC LIMIT 1) as shift_title,
-            (SELECT sa_latest.seat_id FROM seat_assignments sa_latest WHERE sa_latest.student_id = s.id ORDER BY sa_latest.id DESC LIMIT 1) as seat_id,
-            (SELECT st.seat_number FROM seat_assignments sa_latest JOIN seats st ON sa_latest.seat_id = st.id WHERE sa_latest.student_id = s.id ORDER BY sa_latest.id DESC LIMIT 1) as seat_number,
-            CASE
-                WHEN s.membership_end < CURRENT_DATE THEN 'expired'
-                ELSE 'active'
-            END AS status
-        FROM students s
-        LEFT JOIN branches b ON s.branch_id = b.id
-        WHERE s.membership_end < CURRENT_DATE
-      `;
-      const params = [];
-      
-      if (branchIdNum) {
-        query += ` AND s.branch_id = $1`;
-        params.push(branchIdNum);
-      }
-      query += ` ORDER BY s.name`;
-
-      const result = await pool.query(query, params);
-      const students = result.rows.map(student => ({
-        ...student,
-        membership_start: new Date(student.membership_start).toISOString().split('T')[0],
-        membership_end: new Date(student.membership_end).toISOString().split('T')[0],
-        total_fee: parseFloat(student.total_fee || 0),
-        amount_paid: parseFloat(student.amount_paid || 0),
-        due_amount: parseFloat(student.due_amount || 0),
-        cash: parseFloat(student.cash || 0),
-        online: parseFloat(student.online || 0),
-        security_money: parseFloat(student.security_money || 0),
-        remark: student.remark || '',
-      }));
-      res.json({ students });
-    } catch (err) {
-      console.error('Error in students/expired route:', err.stack);
-      res.status(500).json({ message: 'Server error', error: err.message });
+  try {
+    const { branchId } = req.query;
+    const branchIdNum = branchId ? parseInt(branchId, 10) : null;
+    let query = `
+      SELECT
+          s.*,
+          b.name as branch_name,
+          (SELECT sa_latest.shift_id FROM seat_assignments sa_latest WHERE sa_latest.student_id = s.id ORDER BY sa_latest.id DESC LIMIT 1) as shift_id,
+          (SELECT sch.title FROM seat_assignments sa_latest JOIN schedules sch ON sa_latest.shift_id = sch.id WHERE sa_latest.student_id = s.id ORDER BY sa_latest.id DESC LIMIT 1) as shift_title,
+          (SELECT sa_latest.seat_id FROM seat_assignments sa_latest WHERE sa_latest.student_id = s.id ORDER BY sa_latest.id DESC LIMIT 1) as seat_id,
+          (SELECT st.seat_number FROM seat_assignments sa_latest JOIN seats st ON sa_latest.seat_id = st.id WHERE sa_latest.student_id = s.id ORDER BY sa_latest.id DESC LIMIT 1) as seat_number,
+          CASE
+              WHEN s.membership_end < CURRENT_DATE THEN 'expired'
+              ELSE 'active'
+          END AS status
+      FROM students s
+      LEFT JOIN branches b ON s.branch_id = b.id
+    `;
+    const params = [];
+    
+    // Conditions to filter by
+    const whereClauses = [
+      "s.membership_end < CURRENT_DATE", // Condition 1: Membership is expired
+      "s.is_active = true"               // Condition 2: Student has not been manually deactivated
+    ];
+    
+    if (branchIdNum) {
+      whereClauses.push(`s.branch_id = $${params.length + 1}`);
+      params.push(branchIdNum);
     }
-  });
+    
+    // Append the final WHERE clause
+    query += ` WHERE ${whereClauses.join(' AND ')}`;
+    query += ` ORDER BY s.name`;
+
+    const result = await pool.query(query, params);
+    const students = result.rows.map(student => ({
+      ...student,
+      membership_start: new Date(student.membership_start).toISOString().split('T')[0],
+      membership_end: new Date(student.membership_end).toISOString().split('T')[0],
+      total_fee: parseFloat(student.total_fee || 0),
+      amount_paid: parseFloat(student.amount_paid || 0),
+      due_amount: parseFloat(student.due_amount || 0),
+      cash: parseFloat(student.cash || 0),
+      online: parseFloat(student.online || 0),
+      security_money: parseFloat(student.security_money || 0),
+      remark: student.remark || '',
+    }));
+    res.json({ students });
+  } catch (err) {
+    console.error('Error in students/expired route:', err.stack);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
 
   // GET students expiring soon
   // File: students.js
