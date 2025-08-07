@@ -23,7 +23,7 @@ module.exports = (pool) => {
       let query = `
         SELECT
           s.id, s.name, s.phone, s.registration_number, s.father_name, s.aadhar_number,
-          s.is_active, -- <-- ADDED is_active field
+          s.is_active,
           TO_CHAR(s.membership_end, 'YYYY-MM-DD') AS membership_end,
           TO_CHAR(s.created_at, 'YYYY-MM-DD') AS created_at,
           CASE
@@ -34,11 +34,17 @@ module.exports = (pool) => {
         FROM students s
       `;
       const params = [];
+      const whereClauses = ["s.is_active = true"]; // Always filter for active students
 
       if (branchIdNum) {
-        query += ` WHERE s.branch_id = $1`;
         params.push(branchIdNum);
+        whereClauses.push(`s.branch_id = $${params.length}`);
       }
+
+      if (whereClauses.length > 0) {
+        query += ` WHERE ${whereClauses.join(' AND ')}`;
+      }
+      
       query += ` ORDER BY s.name`;
       
       const result = await pool.query(query, params);
@@ -48,6 +54,7 @@ module.exports = (pool) => {
       res.status(500).json({ message: 'Server error', error: err.message });
     }
   });
+
 
   // NEW ENDPOINT: GET inactive students
   router.get('/inactive', checkAdminOrStaff, async (req, res) => {
@@ -106,38 +113,47 @@ module.exports = (pool) => {
 
   // GET active students (dynamically)
   router.get('/active', checkAdminOrStaff, async (req, res) => {
-    try {
-      const { branchId } = req.query;
-      const branchIdNum = branchId ? parseInt(branchId, 10) : null;
-      let query = withCalculatedStatus();
-      const params = [];
+  try {
+    const { branchId } = req.query;
+    const branchIdNum = branchId ? parseInt(branchId, 10) : null;
+    let query = withCalculatedStatus();
+    const params = [];
 
-      query += ` WHERE s.membership_end >= CURRENT_DATE`;
-      if (branchIdNum) {
-        query += ` AND s.branch_id = $1`;
-        params.push(branchIdNum);
-      }
-      query += ` ORDER BY s.name`;
+    // Define all conditions for an "active" student in an array
+    const whereClauses = [
+      "s.membership_end >= CURRENT_DATE", // Membership is not expired
+      "s.is_active = true"                // Student is manually activated
+    ];
 
-      const result = await pool.query(query, params);
-      const students = result.rows.map(student => ({
-        ...student,
-        membership_start: new Date(student.membership_start).toISOString().split('T')[0],
-        membership_end: new Date(student.membership_end).toISOString().split('T')[0],
-        total_fee: parseFloat(student.total_fee || 0),
-        amount_paid: parseFloat(student.amount_paid || 0),
-        due_amount: parseFloat(student.due_amount || 0),
-        cash: parseFloat(student.cash || 0),
-        online: parseFloat(student.online || 0),
-        security_money: parseFloat(student.security_money || 0),
-        remark: student.remark || '',
-      }));
-      res.json({ students });
-    } catch (err) {
-      console.error('Error in students/active route:', err.stack);
-      res.status(500).json({ message: 'Server error', error: err.message });
+    // Add the branch filter if provided
+    if (branchIdNum) {
+      whereClauses.push(`s.branch_id = $${params.length + 1}`);
+      params.push(branchIdNum);
     }
-  });
+    
+    // Join all conditions with 'AND' to build the final WHERE clause
+    query += ` WHERE ${whereClauses.join(' AND ')}`;
+    query += ` ORDER BY s.name`;
+
+    const result = await pool.query(query, params);
+    const students = result.rows.map(student => ({
+      ...student,
+      membership_start: new Date(student.membership_start).toISOString().split('T')[0],
+      membership_end: new Date(student.membership_end).toISOString().split('T')[0],
+      total_fee: parseFloat(student.total_fee || 0),
+      amount_paid: parseFloat(student.amount_paid || 0),
+      due_amount: parseFloat(student.due_amount || 0),
+      cash: parseFloat(student.cash || 0),
+      online: parseFloat(student.online || 0),
+      security_money: parseFloat(student.security_money || 0),
+      remark: student.remark || '',
+    }));
+    res.json({ students });
+  } catch (err) {
+    console.error('Error in students/active route:', err.stack);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
 
   // GET expired students (dynamically) - UPDATED to include shift and seat
   router.get('/expired', checkAdminOrStaff, async (req, res) => {

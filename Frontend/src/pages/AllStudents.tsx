@@ -233,7 +233,7 @@ const AllStudents = () => {
                               title={student.isActive ? 'Deactivate Student' : 'Activate Student'}
                             >
                               {student.isActive ? <ToggleLeft size={16}/> : <ToggleRight size={16}/>}
-                              {student.isActive ? 'Deactivate' : 'Activate'}
+                              {student.isActive ? 'Delete' : 'Activate'}
                             </button>
                           </TableCell>
                           <TableCell>

@@ -58,7 +58,7 @@ const InactiveStudents = () => {
         <div className="flex-1 overflow-y-auto p-6">
           <div className="max-w-7xl mx-auto">
             <div className="mb-6">
-              <h1 className="text-2xl font-bold text-gray-800">Inactive Students</h1>
+              <h1 className="text-2xl font-bold text-gray-800">Recycle Bin</h1>
               <p className="text-gray-500">List of all manually deactivated students.</p>
             </div>
             <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
