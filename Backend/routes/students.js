@@ -312,7 +312,7 @@ router.get('/expiring-soon', checkAdminOrStaff, async (req, res) => {
   router.get('/shift/:shiftId', checkAdminOrStaff, async (req, res) => {
     try {
       const { shiftId } = req.params;
-      const { search, status: statusFilter } = req.query;
+      const { search, status: statusFilter, branchId } = req.query;
       
       const shiftIdNum = parseInt(shiftId, 10);
       if (isNaN(shiftIdNum)) {
@@ -351,6 +351,16 @@ router.get('/expiring-soon', checkAdminOrStaff, async (req, res) => {
           query += ` AND s.membership_end >= CURRENT_DATE`;
         } else if (statusFilter === 'expired') {
           query += ` AND s.membership_end < CURRENT_DATE`;
+        }
+      }
+      
+      // Add branch filter if provided
+      if (branchId && branchId !== 'all') {
+        const branchIdNum = parseInt(branchId, 10);
+        if (!isNaN(branchIdNum)) {
+          query += ` AND s.branch_id = $${paramIndex}`;
+          params.push(branchIdNum);
+          paramIndex++;
         }
       }
       

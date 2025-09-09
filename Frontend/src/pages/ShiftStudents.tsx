@@ -13,6 +13,12 @@ import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
 import api from '../services/api';
 
+interface Branch {
+  id: number;
+  name: string;
+  code?: string | null;
+}
+
 // Interface updated to include registrationNumber
 interface Student {
   id: number;
@@ -48,11 +54,29 @@ const ShiftStudents: React.FC = () => {
   const navigate = useNavigate();
   const [students, setStudents] = useState<Student[]>([]);
   const [shiftName, setShiftName] = useState<string>('');
-  const [filters, setFilters] = useState({ search: '', status: 'all' });
+  const [filters, setFilters] = useState({ search: '', status: 'all', branchId: 'all' });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [branches, setBranches] = useState<Branch[]>([]);
+
+  useEffect(() => {
+    const fetchBranches = async () => {
+      try {
+        const response = await api.getBranches();
+        console.log('Branches response:', response); // Debug log
+        // The response should be the branches array directly
+        setBranches(Array.isArray(response) ? response : []);
+      } catch (err) {
+        console.error('Failed to fetch branches:', err);
+        toast.error('Failed to load branches');
+        setBranches([]);
+      }
+    };
+
+    fetchBranches();
+  }, []);
 
   useEffect(() => {
     const fetchShiftAndStudents = async () => {
@@ -62,11 +86,12 @@ const ShiftStudents: React.FC = () => {
           throw new Error('Invalid shift ID');
         }
 
-        const shiftResponse = await api.getSchedule(shiftId);
-        setShiftName(shiftResponse.title || `Shift ${shiftId}`);
+        const [shiftResponse, studentsResponse] = await Promise.all([
+          api.getSchedule(shiftId),
+          api.getStudentsByShift(shiftId, filters)
+        ]);
 
-        // The backend will handle searching by registration number with the existing `filters` object.
-        const studentsResponse = await api.getStudentsByShift(shiftId, filters);
+        setShiftName(shiftResponse.title || `Shift ${shiftId}`);
         
         if (!studentsResponse || !Array.isArray(studentsResponse.students)) {
           throw new Error('Invalid response: Students data is missing or not an array');
@@ -138,7 +163,7 @@ const ShiftStudents: React.FC = () => {
                 </Button>
               </CardHeader>
               <CardContent>
-                <div className="flex flex-col sm:flex-row gap-4 mb-6">
+                <div className="flex flex-col sm:flex-row gap-4 mb-6 flex-wrap">
                   <Input
                     type="text"
                     name="search"
@@ -152,9 +177,25 @@ const ShiftStudents: React.FC = () => {
                       <SelectValue placeholder="Filter by status" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All</SelectItem>
+                      <SelectItem value="all">All Status</SelectItem>
                       <SelectItem value="active">Active</SelectItem>
                       <SelectItem value="expired">Expired</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select 
+                    value={filters.branchId || undefined}
+                    onValueChange={(value) => setFilters(prev => ({ ...prev, branchId: value }))}
+                  >
+                    <SelectTrigger className="w-[200px]">
+                      <SelectValue placeholder="All Branches" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Branches</SelectItem>
+                      {branches.map((branch) => (
+                        <SelectItem key={branch.id} value={branch.id.toString()}>
+                          {branch.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
